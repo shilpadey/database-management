@@ -7,7 +7,6 @@ const port = 3000;
 
 app.use(express.json());
 
-app.set('view engine', 'ejs');
 
 // Create MySQL connection
 const db = mysql.createConnection({
@@ -39,7 +38,8 @@ app.post('/create-table', (req, res) => {
   const tableName = req.body.tableName;
   const columns = Object.values(req.body).filter((val) => val !== tableName);
 
-  const createTableQuery = `CREATE TABLE ${tableName} (${columns.map((col) => `${col} VARCHAR(255)`).join(', ')})`;
+
+    const createTableQuery = `CREATE TABLE ${tableName} (id INT AUTO_INCREMENT PRIMARY KEY, ${columns.map((col) => `${col} VARCHAR(255)`).join(', ')})`;
 
   db.query(createTableQuery, (err, result) => {
     if (err) {
@@ -87,11 +87,10 @@ app.get('/table-details/:tableName', (req, res) => {
 // Handle form submission to insert data
 app.post('/insert-data/:tableName', (req, res) => {
   const tableName = req.params.tableName;
-  const formData = req.body;
 
-  // Extract column names and values from the form data
-  const columns = Object.keys(formData);
-  const values = Object.values(formData);
+  const columns = req.body.columns;
+  const values = req.body.values;
+
 
   // Construct placeholders for the values
   const valuePlaceholders = values.map(() => '?').join(', ');
@@ -110,10 +109,44 @@ app.post('/insert-data/:tableName', (req, res) => {
       console.log('Data inserted successfully');
       console.log(result);
       res.json({ success: true, message: 'Data inserted successfully' });
+
     }
   });
 });
 
+// Add this route to fetch data for a specific table
+app.get('/fetch-data/:tableName', (req, res) => {
+  const tableName = req.params.tableName;
+  const fetchDataQuery = `SELECT * FROM ${tableName}`;
+
+  db.query(fetchDataQuery, (err, result) => {
+      if (err) {
+          console.error('Error fetching data:', err);
+          res.json({ success: false, error: err.message });
+      } else {
+          const data = result;
+          res.json(data);
+      }
+  });
+});
+
+// Handle form submission to delete data
+app.post('/delete-data/:tableName/:id', (req, res) => {
+    const tableName = req.params.tableName;
+    const recordId = req.params.id;
+
+    const deleteDataQuery = `DELETE FROM ${tableName} WHERE id = ?`;
+
+    db.query(deleteDataQuery, [recordId], (err, result) => {
+        if (err) {
+            console.error('Error deleting data:', err);
+            res.json({ success: false, error: err.message });
+        } else {
+            console.log('Data deleted successfully');
+            res.json({ success: true, message: 'Data deleted successfully' });
+        }
+    });
+});
 
 
 app.listen(port, () => {
